@@ -1,0 +1,36 @@
+name: Build Windows App
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: إعداد Firebase (من سر FIREBASE_CONFIG_JSON إن وُجد)
+        env:
+          FBCFG: ${{ secrets.FIREBASE_CONFIG_JSON }}
+        run: |
+          if [ -n "$FBCFG" ]; then echo "$FBCFG" > src/firebase-config.json; echo "تم ضبط Firebase من السر"; else echo "::warning::FIREBASE_CONFIG_JSON غير مضبوط — سيظهر التطبيق بشاشة «الإعداد ناقص»"; fi
+      - run: npm install
+      - run: npm run build
+      - name: Copy web files
+        shell: bash
+        run: |
+          mkdir -p desktop/www
+          cp www/index.html www/style.css www/app.js www/logo.png desktop/www/
+      - name: Build Windows exe
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          npm install
+          npx electron-builder --win --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Osret-Thanawy-Service-Windows
+          path: |
+            desktop/dist/*.exe

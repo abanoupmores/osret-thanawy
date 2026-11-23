@@ -1,0 +1,25 @@
+name: Admin Worker (free)
+# ينفّذ الطلبات الإدارية المسجّلة من التطبيق (إعادة تعيين باسورد مخدوم، تحديث رقم الدخول).
+# مجاني: GitHub Actions + Firebase Spark. يحتاج سرًّا واحدًا: FIREBASE_SERVICE_ACCOUNT (انظر DEPLOY_4.1.0.md).
+on:
+  workflow_dispatch:        # تشغيل يدوي فوري من تبويب Actions ← Run workflow
+  schedule:
+    - cron: '17 * * * *'    # كل ساعة (يوفّر دقائق الـ Actions في المستودعات الخاصة)
+concurrency:
+  group: admin-worker
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm install --no-audit --no-fund
+        working-directory: tools/admin-worker
+      - run: node worker.mjs
+        working-directory: tools/admin-worker
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
