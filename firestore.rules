@@ -1,0 +1,396 @@
+rules_version = '2';
+// خدمة أسرة ثانوي — قواعد Firestore 5.0.0
+// النموذج: users/{uid} = { role: member|servant|admin, section: boys|girls|general, status: pending|active|suspended|rejected }
+//  - المدير العام (admin) = role admin + section general، يُنشأ فقط يدويًا (Console / Admin SDK) ولا يمكن إنشاؤه من التطبيق أبدًا.
+//  - كل مستند تابع لقسم يحمل حقل section (boys | girls | both للمشترك). الخادم/المخدوم يقرأ [قسمه, both] فقط.
+//  - لا أحد يغيّر role أو section أو status بنفسه. تغيير status للغير: الخادم لمخدومي قسمه، المدير العام للجميع.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function uPath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function u() { return get(uPath()).data; }
+    function activeUser() { return signedIn() && exists(uPath()) && u().status == 'active'; }
+    function isAdmin() { return activeUser() && u().role == 'admin' && u().section == 'general'; }
+    function secUser() { return activeUser() && u().section in ['boys', 'girls']; }
+    function isServant() { return secUser() && u().role == 'servant'; }
+    function isMember() { return secUser() && u().role == 'member' && u().memberId is string && u().memberId != ''; }
+    function mySec() { return u().section; }
+    function inScope(d) { return d.section in [mySec(), 'both']; }
+    function readSec(d) { return isAdmin() || (secUser() && inScope(d)); }
+    // كتابة مستند جديد: الخادم في قسمه فقط، المدير العام في أي قسم أو both
+    function writeSecDoc(d) { return (isAdmin() && d.section in ['boys', 'girls', 'both']) || (isServant() && d.section == mySec()); }
+    // تعديل/حذف مستند قائم: قسمه فقط للخادم (مستندات both للمدير العام فقط)
+    function staffOf(d) { return isAdmin() || (isServant() && d.section == mySec()); }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    function sameSec() { return request.resource.data.section == resource.data.section; }
+    function memberDoc(id) { return get(/databases/$(database)/documents/members/$(id)); }
+    function cfgNum(k, d) {
+      return exists(/databases/$(database)/documents/config/main)
+        && get(/databases/$(database)/documents/config/main).data.get(k, d) is number
+        ? get(/databases/$(database)/documents/config/main).data.get(k, d) : d;
+    }
+    function votePts() { return cfgNum('votePts', 1) is int ? cfgNum('votePts', 1) : 1; }
+    function welcomePts() { return cfgNum('welcomePts', 5); }
+    function msgShape(d, room, id) {
+      return d.keys().hasOnly(['messageId','senderUid','senderName','senderPhoto','senderRole','section','text','createdAt'])
+        && d.keys().hasAll(['messageId','senderUid','senderName','senderPhoto','senderRole','section','text','createdAt'])
+        && d.messageId == id && d.senderUid == request.auth.uid
+        && d.senderName == u().name && d.senderRole == u().role
+        && d.section == room
+        && d.text is string && d.text.size() > 0 && d.text.size() <= 1000
+        && d.createdAt == request.time
+        && d.senderPhoto is string && d.senderPhoto.size() <= 8000
+        && (d.senderPhoto == '' || d.senderPhoto.matches('^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$'));
+    }
+
+    // ================= الحسابات =================
+    match /users/{userId} {
+      function selfKeys(d) {
+        return d.keys().hasOnly(['name','role','section','status','contact','phone','memberId','createdAt','photo'])
+          && d.keys().hasAll(['name','role','section','status','memberId','createdAt']);
+      }
+      function provKeys(d) {
+        return d.keys().hasOnly(['name','role','section','status','contact','phone','memberId','createdAt','photo','mustChangePw']);
+      }
+      function nameOk(d) { return d.name is string && d.name.size() > 0 && d.name.size() <= 100; }
+      function statusOk(s) { return s in ['active', 'suspended', 'rejected']; }
+
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin()
+        || (isServant() && resource.data.role == 'member' && resource.data.section == mySec()));
+
+      // (1) تسجيل ذاتي: دائمًا pending، لا admin، القسم boys/girls فقط. المخدوم يُربط بسجل uid فيه = uid بتاعه يُنشأ في نفس الـ batch.
+      allow create: if signedIn() && request.auth.uid == userId
+        && selfKeys(request.resource.data) && nameOk(request.resource.data)
+        && request.resource.data.status == 'pending'
+        && request.resource.data.section in ['boys', 'girls']
+        && ((request.resource.data.role == 'member' && request.resource.data.memberId is string
+              && getAfter(/databases/$(database)/documents/members/$(request.resource.data.memberId)).data.get('uid', '') == request.auth.uid
+              && getAfter(/databases/$(database)/documents/members/$(request.resource.data.memberId)).data.section == request.resource.data.section)
+            || (request.resource.data.role == 'servant' && request.resource.data.memberId == ''));
+      // (2) المدير العام ينشئ حساب خادم مفعّل (لا يمكنه إنشاء admin من التطبيق)
+      allow create: if isAdmin() && request.auth.uid != userId && provKeys(request.resource.data) && nameOk(request.resource.data)
+        && request.resource.data.role == 'servant' && request.resource.data.memberId == ''
+        && request.resource.data.section in ['boys', 'girls'] && request.resource.data.status == 'active';
+      // (3) تفعيل حساب مخدوم قائم (الخادم لقسمه، المدير العام لأي قسم): users + members.uid في نفس الـ batch
+      allow create: if (isAdmin() || (isServant() && request.resource.data.section == mySec()))
+        && request.auth.uid != userId && provKeys(request.resource.data) && nameOk(request.resource.data)
+        && request.resource.data.role == 'member' && request.resource.data.status == 'active'
+        && request.resource.data.section in ['boys', 'girls']
+        && request.resource.data.memberId is string
+        && memberDoc(request.resource.data.memberId).data.section == request.resource.data.section
+        && memberDoc(request.resource.data.memberId).data.get('uid', '') == ''
+        && getAfter(/databases/$(database)/documents/members/$(request.resource.data.memberId)).data.get('uid', '') == userId;
+
+      // تعديل بيانات النفس (role/section/status/memberId ممنوعة تمامًا)
+      allow update: if signedIn() && request.auth.uid == userId
+        && changed().hasOnly(['name', 'contact', 'phone', 'photo'])
+        && (!('photo' in changed()) || (request.resource.data.photo is string && request.resource.data.photo.size() <= 40000));
+      // إنهاء «تغيير الباسورد الإجباري» (true -> false فقط)
+      allow update: if signedIn() && request.auth.uid == userId
+        && changed().hasOnly(['mustChangePw']) && request.resource.data.mustChangePw == false;
+      // الخادم/المدير يديرون حسابات المخدومين (قسم الخادم فقط)
+      allow update: if staffOf(resource.data) && resource.data.role == 'member'
+        && (changed().hasOnly(['name', 'phone', 'contact'])
+            || (changed().hasOnly(['status']) && statusOk(request.resource.data.status)));
+      // ربط حساب موجود بسجل مخدوم في نفس القسم
+      allow update: if staffOf(resource.data) && resource.data.role == 'member' && changed().hasOnly(['memberId'])
+        && request.resource.data.memberId is string
+        && getAfter(/databases/$(database)/documents/members/$(request.resource.data.memberId)).data.get('uid', '') == userId
+        && getAfter(/databases/$(database)/documents/members/$(request.resource.data.memberId)).data.section == resource.data.section;
+      // المدير العام يدير الخدام (موافقة/إيقاف/رفض). لا تغيير دور ولا قسم.
+      allow update: if isAdmin() && resource.data.role == 'servant'
+        && (changed().hasOnly(['name', 'phone', 'contact'])
+            || (changed().hasOnly(['status']) && statusOk(request.resource.data.status)));
+      allow delete: if (isAdmin() && resource.data.role != 'admin')
+        || (isServant() && resource.data.role == 'member' && resource.data.section == mySec());
+    }
+
+    // ================= المخدومون =================
+    match /members/{memberId} {
+      function adjDoc(id) { return /databases/$(database)/documents/adjustments/$(id); }
+      function welcomeOk() {
+        return resource.data.get('welcomeEligible', false) == true
+          && resource.data.get('welcomePaid', false) == false
+          && request.resource.data.welcomePaid == true
+          && existsAfter(adjDoc('welcome_' + memberId)) && !exists(adjDoc('welcome_' + memberId))
+          && request.resource.data.points - resource.data.get('points', 0) == getAfter(adjDoc('welcome_' + memberId)).data.pts;
+      }
+      function staffEditOk() {
+        return staffOf(resource.data)
+          && !('section' in changed())
+          && !('welcomeEligible' in changed())
+          && (!('uid' in changed()) || resource.data.get('uid', '') == '')
+          && (!('welcomePaid' in changed()) || welcomeOk())
+          && (!('approved' in changed()) || (resource.data.approved == false && request.resource.data.approved == true));
+      }
+      function selfCheckInOk() {
+        return changed().hasOnly(['points', 'attended', 'lastAtt'])
+          && request.resource.data.lastAtt is string
+          && request.resource.data.attended == resource.data.attended + 1
+          && existsAfter(/databases/$(database)/documents/attendance/$(request.resource.data.lastAtt))
+          && !exists(/databases/$(database)/documents/attendance/$(request.resource.data.lastAtt))
+          && getAfter(/databases/$(database)/documents/attendance/$(request.resource.data.lastAtt)).data.memberId == memberId
+          && getAfter(/databases/$(database)/documents/attendance/$(request.resource.data.lastAtt)).data.section == resource.data.section
+          && request.resource.data.points - resource.data.points == getAfter(/databases/$(database)/documents/attendance/$(request.resource.data.lastAtt)).data.pts;
+      }
+      allow read: if isAdmin()
+        || (isServant() && inScope(resource.data))
+        || (isMember() && inScope(resource.data) && resource.data.approved == true)
+        || (signedIn() && resource.data.get('uid', '') == request.auth.uid);
+      // إنشاء بواسطة الخادم (قسمه) أو المدير (أي قسم)، أو تسجيل ذاتي pending (approved=false) يُنشأ مع users في نفس الـ batch
+      allow create: if (isAdmin() || (isServant() && request.resource.data.section == mySec()))
+          && request.resource.data.section in ['boys', 'girls']
+          && request.resource.data.get('uid', '') == ''
+          && request.resource.data.get('welcomePaid', false) == false
+          && request.resource.data.approved == true
+        || (signedIn() && !exists(uPath()) && request.resource.data.uid == request.auth.uid
+          && request.resource.data.section in ['boys', 'girls']
+          && request.resource.data.points == 0 && request.resource.data.attended == 0
+          && request.resource.data.get('welcomePaid', false) == false
+          && !('lastAtt' in request.resource.data)
+          && request.resource.data.approved == false
+          && getAfter(uPath()).data.memberId == memberId
+          && getAfter(uPath()).data.role == 'member'
+          && getAfter(uPath()).data.section == request.resource.data.section);
+      allow update: if staffEditOk()
+        || (isMember() && resource.data.uid == request.auth.uid && memberId == u().memberId && (
+             changed().hasOnly(['photo', 'phone', 'birth', 'name'])
+             || selfCheckInOk()
+             || (changed().hasOnly(['points', 'lastVotePoll'])
+                 && request.resource.data.lastVotePoll is string
+                 && request.resource.data.points - resource.data.points == votePts()
+                 && votePts() > 0
+                 && existsAfter(/databases/$(database)/documents/pollVotes/$(request.resource.data.lastVotePoll + '_' + memberId))
+                 && !exists(/databases/$(database)/documents/pollVotes/$(request.resource.data.lastVotePoll + '_' + memberId)))));
+      allow delete: if staffOf(resource.data);
+    }
+
+    // ================= الأحداث والحضور والنقاط =================
+    match /events/{eventId} {
+      allow read: if readSec(resource.data);
+      allow create: if writeSecDoc(request.resource.data);
+      allow update: if staffOf(resource.data) && sameSec();
+      allow delete: if staffOf(resource.data);
+    }
+
+    match /attendance/{attendanceId} {
+      allow read: if signedIn() && (resource == null || isAdmin()
+        || (isServant() && inScope(resource.data))
+        || (isMember() && resource.data.memberId == u().memberId));
+      allow create: if (writeSecDoc(request.resource.data) && request.resource.data.section in ['boys', 'girls']
+          && memberDoc(request.resource.data.memberId).data.section == request.resource.data.section)
+        || (isMember() && request.resource.data.memberId == u().memberId
+          && memberDoc(request.resource.data.memberId).data.uid == request.auth.uid
+          && request.resource.data.section == mySec()
+          && memberDoc(request.resource.data.memberId).data.section == request.resource.data.section
+          && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.section in [mySec(), 'both']
+          && attendanceId == request.resource.data.eventId + '_' + request.resource.data.memberId
+          && request.resource.data.pts >= 0 && request.resource.data.pts <= cfgNum('max', 5)
+          && request.time.toMillis() >= get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.when - 31 * 60 * 1000
+          && request.time.toMillis() <= get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.when + 181 * 60 * 1000);
+      allow update, delete: if staffOf(resource.data) && (request.method == 'delete' || sameSec());
+    }
+
+    match /adjustments/{adjId} {
+      function welcomeAdjOk() {
+        return request.resource.data.type == 'welcome'
+          && adjId == 'welcome_' + request.resource.data.memberId
+          && request.resource.data.pts == welcomePts() && welcomePts() > 0
+          && memberDoc(request.resource.data.memberId).data.get('welcomeEligible', false) == true
+          && memberDoc(request.resource.data.memberId).data.get('welcomePaid', false) == false
+          && getAfter(/databases/$(database)/documents/members/$(request.resource.data.memberId)).data.get('welcomePaid', false) == true;
+      }
+      allow read: if signedIn() && (resource == null || isAdmin()
+        || (isServant() && inScope(resource.data))
+        || (isMember() && resource.data.memberId == u().memberId));
+      allow create: if writeSecDoc(request.resource.data) && request.resource.data.section in ['boys', 'girls']
+        && memberDoc(request.resource.data.memberId).data.section == request.resource.data.section
+        && (!adjId.matches('welcome_.*') || request.resource.data.get('type', '') == 'welcome')
+        && (request.resource.data.get('type', '') != 'welcome' || welcomeAdjOk());
+      allow update, delete: if staffOf(resource.data) && resource.data.get('type', '') != 'welcome' && !adjId.matches('welcome_.*');
+    }
+
+    match /notifs/{notificationId} {
+      // to = 'all' (كل مخدومي القسم) أو memberId
+      allow read: if isAdmin()
+        || (isServant() && inScope(resource.data))
+        || (isMember() && inScope(resource.data) && resource.data.to in ['all', u().memberId]);
+      allow create: if writeSecDoc(request.resource.data) && request.resource.data.to is string
+        && (request.resource.data.to == 'all'
+            || memberDoc(request.resource.data.to).data.section == request.resource.data.section);
+      allow update, delete: if staffOf(resource.data);
+    }
+
+    // الإعدادات: القراءة لأي حساب مفعّل. config/main و app_update للمدير العام فقط. weekly_{section} لخادم القسم أو المدير.
+    match /config/{configId} {
+      allow read: if activeUser();
+      allow write: if isAdmin() || (isServant() && configId == 'weekly_' + mySec());
+    }
+
+    // ================= الوسائط (ترانيم) =================
+    match /hymnFolders/{folderId} {
+      allow read: if readSec(resource.data);
+      allow create: if writeSecDoc(request.resource.data) && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80;
+      allow update: if staffOf(resource.data) && sameSec() && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80;
+      allow delete: if staffOf(resource.data);
+    }
+    match /hymns/{hymnId} {
+      allow read: if readSec(resource.data);
+      allow create: if writeSecDoc(request.resource.data) && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 120
+                    && request.resource.data.folderId is string
+                    && get(/databases/$(database)/documents/hymnFolders/$(request.resource.data.folderId)).data.section == request.resource.data.section
+                    && request.resource.data.get('audioUrl', '') is string
+                    && request.resource.data.get('audioUrl', '').matches('^(https://.*)?$');
+      allow update: if staffOf(resource.data) && sameSec() && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 120
+                    && request.resource.data.folderId is string
+                    && request.resource.data.get('audioUrl', '') is string
+                    && request.resource.data.get('audioUrl', '').matches('^(https://.*)?$');
+      allow delete: if staffOf(resource.data);
+    }
+
+    // ================= التصويت =================
+    match /polls/{pollId} {
+      allow read: if readSec(resource.data);
+      allow create: if writeSecDoc(request.resource.data);
+      allow delete: if staffOf(resource.data);
+      allow update: if (staffOf(resource.data) && sameSec())
+        || (isMember() && inScope(resource.data) && changed().hasOnly(['total'])
+            && request.resource.data.total == resource.data.get('total', 0) + 1
+            && existsAfter(/databases/$(database)/documents/pollVotes/$(pollId + '_' + u().memberId))
+            && !exists(/databases/$(database)/documents/pollVotes/$(pollId + '_' + u().memberId)));
+    }
+    match /pollVotes/{voteId} {
+      allow read: if signedIn() && (resource == null || isAdmin()
+        || (isServant() && inScope(resource.data))
+        || (isMember() && resource.data.memberId == u().memberId));
+      allow create: if isMember()
+          && request.resource.data.memberId == u().memberId
+          && request.resource.data.section == mySec()
+          && memberDoc(request.resource.data.memberId).data.uid == request.auth.uid
+          && voteId == request.resource.data.pollId + '_' + request.resource.data.memberId
+          && get(/databases/$(database)/documents/polls/$(request.resource.data.pollId)).data.isActive == true
+          && get(/databases/$(database)/documents/polls/$(request.resource.data.pollId)).data.get('deleted', false) == false
+          && get(/databases/$(database)/documents/polls/$(request.resource.data.pollId)).data.section in [mySec(), 'both']
+          && request.resource.data.choices is list
+          && request.resource.data.choices.size() >= 1 && request.resource.data.choices.size() <= 10
+          && (get(/databases/$(database)/documents/polls/$(request.resource.data.pollId)).data.allowMultiple == true
+              || request.resource.data.choices.size() == 1)
+          && request.resource.data.pts == votePts();
+      allow update, delete: if staffOf(resource.data);
+    }
+
+    // ================= الشات =================
+    // غرفة القسم: أعضاء القسم (مخدومون وخدام) + المدير العام فقط. لا تعديل ولا حذف.
+    match /sectionChats/{room}/messages/{messageId} {
+      allow read: if room in ['boys', 'girls'] && (isAdmin() || (secUser() && mySec() == room));
+      allow create: if room in ['boys', 'girls'] && (isAdmin() || (secUser() && mySec() == room))
+        && msgShape(request.resource.data, room, messageId);
+      allow update, delete: if false;
+    }
+    // اجتماع الخدام: خدام القسم + المدير العام فقط (المخدوم ممنوع حتى بالمسار المباشر)
+    match /servantChat/{room}/messages/{messageId} {
+      allow read: if room in ['boys', 'girls'] && (isAdmin() || (isServant() && mySec() == room));
+      allow create: if room in ['boys', 'girls'] && (isAdmin() || (isServant() && mySec() == room))
+        && msgShape(request.resource.data, room, messageId);
+      allow update, delete: if false;
+    }
+
+    // ================= طلبات إدارية (تُنفَّذ بـ GitHub Actions + Admin SDK، التنفيذ يعيد التحقق) =================
+    match /adminRequests/{reqId} {
+      allow read: if isAdmin() || (isServant() && inScope(resource.data));
+      allow create: if activeUser()
+        && request.resource.data.keys().hasOnly(['type','targetUid','memberId','newPhone','section','requestedBy','requestedByName','status','createdAt'])
+        && request.resource.data.requestedBy == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.type in ['resetPassword', 'changePhone']
+        && request.resource.data.targetUid is string
+        && ((isAdmin() && request.resource.data.section in ['boys', 'girls', 'general'])
+          || (isServant() && request.resource.data.type == 'resetPassword' && request.resource.data.section == mySec()
+              && memberDoc(request.resource.data.memberId).data.section == mySec()
+              && memberDoc(request.resource.data.memberId).data.get('uid', '') == request.resource.data.targetUid)
+          || (isServant() && request.resource.data.type == 'changePhone' && request.resource.data.section == mySec()
+              && (request.resource.data.targetUid == request.auth.uid
+                  || (memberDoc(request.resource.data.memberId).data.section == mySec()
+                      && memberDoc(request.resource.data.memberId).data.get('uid', '') == request.resource.data.targetUid)))
+          || (isMember() && request.resource.data.type == 'changePhone' && request.resource.data.targetUid == request.auth.uid
+              && request.resource.data.section == mySec()));
+      allow update, delete: if false;
+    }
+
+    // ================= المسابقات — الإجابات الصحيحة لا تُخزّن في المستندات العامة =================
+    match /competitions/{competitionId} {
+      allow read: if readSec(resource.data);
+      allow create, update, delete: if false;
+    }
+    match /competitionRequests/{requestId} {
+      function compDoc(id) { return get(/databases/$(database)/documents/competitions/$(id)); }
+      allow read: if isAdmin() || (isServant() && inScope(resource.data));
+      allow create: if (isAdmin() || isServant()) && request.resource.data.requestedBy == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.action in ['activate', 'deactivate']
+        && request.resource.data.keys().hasOnly(['action','competitionId','section','requestedBy','status','createdAt'])
+        && request.resource.data.competitionId is string
+        && exists(/databases/$(database)/documents/competitions/$(request.resource.data.competitionId))
+        && staffOf(compDoc(request.resource.data.competitionId).data)
+        && request.resource.data.section == compDoc(request.resource.data.competitionId).data.section
+        && compDoc(request.resource.data.competitionId).data.isPublished == true;
+      allow create: if (isAdmin() || isServant()) && request.resource.data.requestedBy == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.action == 'publish'
+        && request.resource.data.keys().hasOnly(['action','competitionId','section','requestedBy','status','createdAt'])
+        && request.resource.data.competitionId is string
+        && exists(/databases/$(database)/documents/competitions/$(request.resource.data.competitionId))
+        && staffOf(compDoc(request.resource.data.competitionId).data)
+        && request.resource.data.section == compDoc(request.resource.data.competitionId).data.section
+        && compDoc(request.resource.data.competitionId).data.isPublished == false;
+      allow create: if writeSecDoc(request.resource.data) && request.resource.data.requestedBy == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.action in ['create', 'update']
+        && request.resource.data.keys().hasOnly(['action','competitionId','title','description','section','startsAt','endsAt','durationMin','isPublished','questions','answers','requestedBy','requestedByName','status','createdAt'])
+        && request.resource.data.competitionId is string
+        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 120
+        && request.resource.data.questions is list && request.resource.data.questions.size() >= 1 && request.resource.data.questions.size() <= 80
+        && request.resource.data.answers is map
+        && request.resource.data.startsAt is number && request.resource.data.endsAt is number
+        && request.resource.data.endsAt > request.resource.data.startsAt
+        && ((request.resource.data.action == 'create'
+          && !exists(/databases/$(database)/documents/competitions/$(request.resource.data.competitionId)))
+          || (request.resource.data.action == 'update'
+          && exists(/databases/$(database)/documents/competitions/$(request.resource.data.competitionId))
+          && staffOf(compDoc(request.resource.data.competitionId).data)
+          && compDoc(request.resource.data.competitionId).data.section == request.resource.data.section
+          && compDoc(request.resource.data.competitionId).data.isPublished == false));
+      allow update, delete: if false;
+    }
+    match /competitionLeaderboard/{entryId} {
+      allow read: if readSec(resource.data);
+      allow create, update, delete: if false;
+    }
+    match /competitionAttempts/{attemptId} {
+      allow read: if isAdmin() || (isServant() && inScope(resource.data))
+        || (isMember() && resource.data.memberId == u().memberId && resource.data.memberUid == request.auth.uid);
+      allow create: if isMember()
+        && request.resource.data.keys().hasOnly(['competitionId','memberId','memberUid','memberName','section','answers','status','createdAt','submittedAt'])
+        && request.resource.data.memberId == u().memberId
+        && request.resource.data.memberUid == request.auth.uid
+        && memberDoc(request.resource.data.memberId).data.uid == request.auth.uid
+        && request.resource.data.section == mySec()
+        && memberDoc(request.resource.data.memberId).data.section == request.resource.data.section
+        && request.resource.data.status == 'pending'
+        && request.resource.data.submittedAt == request.time
+        && request.resource.data.answers is map
+        && attemptId == request.resource.data.competitionId + '_' + request.resource.data.memberId
+        && exists(/databases/$(database)/documents/competitions/$(request.resource.data.competitionId))
+        && get(/databases/$(database)/documents/competitions/$(request.resource.data.competitionId)).data.isPublished == true
+        && get(/databases/$(database)/documents/competitions/$(request.resource.data.competitionId)).data.isActive == true
+        && request.time.toMillis() >= get(/databases/$(database)/documents/competitions/$(request.resource.data.competitionId)).data.startsAt
+        && request.time.toMillis() <= get(/databases/$(database)/documents/competitions/$(request.resource.data.competitionId)).data.endsAt
+        && get(/databases/$(database)/documents/competitions/$(request.resource.data.competitionId)).data.section in [mySec(), 'both'];
+      allow update, delete: if false;
+    }
+  }
+}

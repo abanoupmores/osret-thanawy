@@ -1,0 +1,17 @@
+{
+  "name": "osret-thanawy-desktop",
+  "version": "5.0.0",
+  "description": "خدمة أسرة ثانوي - نسخة الكمبيوتر",
+  "main": "main.js",
+  "author": "Osret Thanawy Service",
+  "scripts": { "start": "electron .", "dist": "electron-builder --win --publish never" },
+  "devDependencies": { "electron": "^31.7.7", "electron-builder": "^24.13.3" },
+  "build": {
+    "appId": "org.osretthanawy.service",
+    "productName": "OsretThanawy",
+    "files": ["main.js", "www/**"],
+    "icon": "build/icon.png",
+    "win": { "target": ["portable", "nsis"] },
+    "nsis": { "oneClick": true, "perMachine": false }
+  }
+}

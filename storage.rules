@@ -1,0 +1,21 @@
+// قواعد Firebase Storage — اختيارية (رفع ملفات الترانيم الصوتية فقط). تتطلب تفعيل Storage (قد يحتاج خطة Blaze حسب سياسة Firebase الحالية).
+// المسار: hymns/{section}/{hymnId}/{file} — section ∈ boys | girls | both
+// القراءة: حساب مفعّل من نفس القسم (أو both) أو المدير العام. الرفع/الحذف: خادم نفس القسم أو المدير العام.
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function u() { return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data; }
+    function active() { return request.auth != null && u().status == 'active'; }
+    function isAdmin() { return active() && u().role == 'admin' && u().section == 'general'; }
+    function isServantOf(sec) { return active() && u().role == 'servant' && u().section == sec; }
+    match /hymns/{section}/{hymnId}/{file} {
+      allow read: if section in ['boys', 'girls', 'both'] && (isAdmin()
+        || (active() && u().section in ['boys', 'girls'] && (section == 'both' || section == u().section)));
+      allow write: if section in ['boys', 'girls', 'both']
+        && (isAdmin() || (section != 'both' && isServantOf(section)))
+        && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType.matches('audio/.*');
+      allow delete: if section in ['boys', 'girls', 'both'] && (isAdmin() || (section != 'both' && isServantOf(section)));
+    }
+  }
+}
