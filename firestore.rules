@@ -200,14 +200,26 @@ service cloud.firestore {
           && memberDoc(request.resource.data.memberId).data.get('welcomePaid', false) == false
           && getAfter(/databases/$(database)/documents/members/$(request.resource.data.memberId)).data.get('welcomePaid', false) == true;
       }
+      // درجة مسابقة: type=contest، المعرّف lc_{contest}_{member}، من 0 إلى الدرجة العظمى، والمسابقة لقسم المخدوم أو both
+      function contestPtsOk() {
+        return request.resource.data.contestId is string
+          && adjId == 'lc_' + request.resource.data.contestId + '_' + request.resource.data.memberId
+          && request.resource.data.pts is int && request.resource.data.pts >= 0
+          && exists(/databases/$(database)/documents/linkContests/$(request.resource.data.contestId))
+          && request.resource.data.pts <= get(/databases/$(database)/documents/linkContests/$(request.resource.data.contestId)).data.maxPts
+          && get(/databases/$(database)/documents/linkContests/$(request.resource.data.contestId)).data.section in [request.resource.data.section, 'both'];
+      }
       allow read: if signedIn() && (resource == null || isAdmin()
         || (isServant() && inScope(resource.data))
         || (isMember() && resource.data.memberId == u().memberId));
       allow create: if writeSecDoc(request.resource.data) && request.resource.data.section in ['boys', 'girls']
+        && (request.resource.data.get('type', '') != 'contest' || contestPtsOk())
         && memberDoc(request.resource.data.memberId).data.section == request.resource.data.section
         && (!adjId.matches('welcome_.*') || request.resource.data.get('type', '') == 'welcome')
         && (request.resource.data.get('type', '') != 'welcome' || welcomeAdjOk());
-      allow update, delete: if staffOf(resource.data) && resource.data.get('type', '') != 'welcome' && !adjId.matches('welcome_.*');
+      allow update: if staffOf(resource.data) && resource.data.get('type', '') != 'welcome' && !adjId.matches('welcome_.*') && sameSec()
+        && (request.resource.data.get('type', '') != 'contest' || contestPtsOk());
+      allow delete: if staffOf(resource.data) && resource.data.get('type', '') != 'welcome' && !adjId.matches('welcome_.*');
     }
 
     match /notifs/{notificationId} {
@@ -321,7 +333,21 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // ================= المسابقات — الإجابات الصحيحة لا تُخزّن في المستندات العامة =================
+    // ================= المسابقات (رابط ينشره الخادم + درجات يدخلها الخادم) =================
+    match /linkContests/{contestId} {
+      function contestOk(d) {
+        return d.title is string && d.title.size() > 0 && d.title.size() <= 120
+          && d.url is string && d.url.matches('^https://[^ ]{4,500}$')
+          && d.maxPts is int && d.maxPts >= 1 && d.maxPts <= 100
+          && d.get('description', '') is string && d.get('description', '').size() <= 500;
+      }
+      allow read: if readSec(resource.data);
+      allow create: if writeSecDoc(request.resource.data) && contestOk(request.resource.data);
+      allow update: if staffOf(resource.data) && sameSec() && contestOk(request.resource.data);
+      allow delete: if staffOf(resource.data);
+    }
+
+    // ================= (قديم) مسابقات الأسئلة — غير مستخدمة في 5.1.0 وتبقى للقراءة فقط =================
     match /competitions/{competitionId} {
       allow read: if readSec(resource.data);
       allow create, update, delete: if false;
