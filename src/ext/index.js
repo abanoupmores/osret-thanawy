@@ -44,15 +44,7 @@ export function startExt(X){
   X.L(SQ('hymnFolders',F.limit(500)),'folders');
   X.L(SQ('hymns',F.limit(1500)),'hymns');
   X.L(SQ('polls',F.limit(200)),'polls');
-  X.L(SQ('competitions',F.limit(200)),'competitions');
-  if(X.isS()){
-    X.L(SQ('competitionRequests',F.limit(200)),'compRequests');
-    X.L(SQ('competitionAttempts',F.limit(5000)),'compAttempts');
-    X.L(SQ('competitionLeaderboard',F.limit(5000)),'compLeaderboard');
-  } else if(me.memberId){
-    X.L(F.query(F.collection(db,'competitionAttempts'),F.where('memberId','==',me.memberId),F.where('memberUid','==',X.uid()),F.limit(500)),'compAttempts');
-    X.L(SQ('competitionLeaderboard',F.limit(5000)),'compLeaderboard');
-  }
+  X.L(SQ('linkContests',F.limit(200)),'linkContests');
   if(X.isS())X.L(SQ('pollVotes',F.limit(5000)),'votes');
   else if(me.memberId)X.L(F.query(F.collection(db,'pollVotes'),F.where('memberId','==',me.memberId)),'votes');
   X.unsub(F.onSnapshot(F.doc(db,'config','app_update'),s=>{S().upd=s.exists()?s.data():null;X.render()},e=>console.warn('app_update',e.code)));
