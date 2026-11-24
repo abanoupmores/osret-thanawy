@@ -22,6 +22,7 @@ const SECN={boys:'قسم البنين',girls:'قسم البنات',both:'الب�
 const chName=k=>SECN[k]||'';
 const TY={rehearsal:['📖','اجتماع'],concert:['🎉','فعالية'],other:['📌','نشاط']};
 const IC={
+link:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
 home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
 users:'<circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c3 0 4.8 1.9 4.8 5"/>',
 check:'<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M9 15l2.2 2.2L15.5 13"/>',
@@ -50,7 +51,7 @@ const ic=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 24 24">${IC[n]}</svg>`;
 
 // ---------- الحالة ----------
 let uid,me,page='home',arg=null,hist=[],vint=null,entry=null,fch='all',mq='',bt=null,atab='qr',rt='m',ptM=null,tmpPhoto='',scanner=null,scanKind='event',scanBusy=0,vi=0,booted=0,nInit=0,mode='in',loginAs=null,pend=null,st;
-const freshS=()=>({members:[],pendM:[],events:[],att:[],notifs:[],adj:[],cfg:{},hymns:[],folders:[],polls:[],votes:[],competitions:[],compRequests:[],compAttempts:[],compLeaderboard:[],upd:null,weekly:null,reqs:[],users:[]});
+const freshS=()=>({members:[],pendM:[],events:[],att:[],notifs:[],adj:[],cfg:{},hymns:[],folders:[],polls:[],votes:[],linkContests:[],upd:null,weekly:null,reqs:[],users:[]});
 let unsubs=[],S=freshS();
 const qrs={},qpend=new Set();
 // الأدوار: member | servant | admin (المدير العام). المدير يستخدم نفس شاشات الخادم + لوحة إدارة. الصلاحيات الحقيقية تُفرض في firestore.rules.

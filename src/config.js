@@ -1,5 +1,5 @@
 import FB from './firebase-config.json';
-export const APP_VERSION = '5.0.0';
+export const APP_VERSION = '5.1.0';
 export const WEEKDAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 // إعداد Firebase يُقرأ من src/firebase-config.json (فارغ عمدًا حتى تضع بيانات مشروعك أنت).
 // التفاصيل في FIREBASE-SETUP-AR.md. لا توجد أي بيانات اعتماد مفبركة هنا.

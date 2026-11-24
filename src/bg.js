@@ -1,12 +1,9 @@
 // خلفيات التطبيق: صور طبيعية من www/assets/backgrounds (غيّر الصورة بنفس الاسم وهتتغير في كل مكان)
 const DIR = 'assets/backgrounds/';
 export const BG = {
-  sunset:    {n: 'الكنيسة وقت الغروب', img: 'church-sunset.webp'},
-  sunrise:   {n: 'الدير وقت الشروق',   img: 'monastery-sunrise.webp'},
-  interior:  {n: 'داخل الكنيسة',       img: 'church-interior.webp'},
-  hymns:     {n: 'صحن الكنيسة', img: 'music-hymns.webp'},
-  clouds:    {n: 'السماء والمدينة',    img: 'sky-competitions.webp'},
-  book:      {n: 'الدير والسماء',      img: 'book-chat.webp'}
+  light:   {n: 'أشعة النور', img: 'heaven-1.webp'},
+  rainbow: {n: 'القوس حول العرش', img: 'heaven-2.webp'},
+  gold:    {n: 'بحر زجاج وذهب', img: 'heaven-3.webp'}
 };
 const url = f => `url('${DIR}${f}')`;
 const thumb = f => `<div style="position:absolute;inset:0;background:${url(f)} center/cover no-repeat"></div>`;
@@ -19,5 +16,5 @@ export const setBg = (k, save = true) => {
   document.body.style.setProperty('--user-bg', key ? url(BG[key].img) : 'none');
   const el = document.getElementById('bg'); if (el) el.innerHTML = '';
 };
-export const preview = k => thumb(BG[k] ? BG[k].img : BG.sunset.img);
-export const splashBg = () => thumb(BG.sunrise.img);
+export const preview = k => thumb(BG[k] ? BG[k].img : BG.light.img);
+export const splashBg = () => thumb(BG.light.img);
