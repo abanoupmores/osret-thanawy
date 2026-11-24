@@ -371,3 +371,56 @@ body[data-sec="boys"] .role.m{background:linear-gradient(135deg,#2a5bb0,#173a78)
 body[data-sec="girls"] .role.m{background:linear-gradient(135deg,#9a3d73,#6e2850)}
 .pill.gray{background:#e9e4d6;color:#6a6252}
 .btn.ok{background:var(--ok)}
+
+/* =====================================================================
+   5.1 — ثيم «السماء المفتوحة»: أبيض + سماء + ذهب شفاف (رؤيا 21 و22)
+   ===================================================================== */
+:root{--navy:#2c7bd0;--navy2:#58a6ec;--gold:#c79a1f;--gold2:#e9c556;--cream:#ffffff;--ink:#15355c;--mut:#5d7898;--ok:#1fa67a;--no:#d9506a;--wa:#e0a02a;--line:#d9e8f6;--pearl:#f4f9ff}
+body{background:#eaf4fd;color:var(--ink)}
+body[data-sec="boys"]{--navy:#1f64b8;--navy2:#4f95e3}
+body[data-sec="girls"]{--navy:#7a4fb0;--navy2:#a681d6}
+#bg{background:#eaf4fd url('assets/backgrounds/heaven-3.webp') center/cover no-repeat!important}
+body[data-page="home"] #bg,body[data-page="login"] #bg,body[data-page="onboard"] #bg{background-image:url('assets/backgrounds/heaven-1.webp')!important}
+body[data-page="chat"] #bg,body[data-page="polls"] #bg,body[data-page="hymns"] #bg,body[data-page="hymn"] #bg,body[data-page="folder"] #bg,body[data-page="competitions"] #bg{background-image:url('assets/backgrounds/heaven-2.webp')!important}
+body #bg{background-size:cover!important;background-position:center top!important}
+#bg .layer,#bg *{display:none!important}
+#bg::after{content:"";position:absolute;inset:0;background:radial-gradient(60% 40% at 50% 0%,rgba(255,250,220,.55),transparent 70%);animation:glowp 7s ease-in-out infinite alternate}
+@keyframes glowp{from{opacity:.55}to{opacity:1}}
+.top{background:linear-gradient(180deg,var(--navy2),var(--navy));box-shadow:0 4px 18px rgba(44,123,208,.28);border-bottom:2px solid var(--gold2)}
+.card,.tile{background:rgba(255,255,255,.9);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.95);box-shadow:0 6px 22px rgba(60,120,190,.16)}
+.card h3,.tile{color:var(--navy)}
+.tile svg.i{color:var(--navy);filter:drop-shadow(0 2px 4px rgba(233,197,86,.45))}
+.btn{background:linear-gradient(180deg,var(--navy2),var(--navy));box-shadow:0 4px 12px rgba(44,123,208,.25)}
+.btn.g{background:linear-gradient(180deg,#f3d577,var(--gold));color:#4a3600;box-shadow:0 4px 12px rgba(199,154,31,.3)}
+.btn.o{background:rgba(255,255,255,.85);color:var(--navy);border:1.5px solid var(--navy2);box-shadow:none}
+.hhead .panel{background:rgba(255,255,255,.82);backdrop-filter:blur(10px);color:var(--ink);border:1px solid rgba(233,197,86,.8);box-shadow:0 8px 26px rgba(60,120,190,.2)}
+.hhead small{color:var(--mut);opacity:1}
+.hhead .logos img{filter:drop-shadow(0 3px 6px rgba(60,100,160,.35))}
+input,select,textarea{background:#fff;border:1.5px solid var(--line);color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--navy2);box-shadow:0 0 0 3px rgba(88,166,236,.22)}
+.chips button{background:rgba(255,255,255,.85);color:var(--navy);border:1px solid var(--line)}
+.chips button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.secbtn{background:rgba(255,255,255,.92);box-shadow:0 8px 22px rgba(60,120,190,.2)}
+.secbtn.boys{border-color:#4f95e3}.secbtn.girls{border-color:#a681d6}
+.admlink{background:rgba(255,255,255,.9)}
+/* شريط التنقل السفلي */
+#nav{background:rgba(255,255,255,.92)!important;backdrop-filter:blur(12px);border-top:2px solid var(--gold2)!important;box-shadow:0 -6px 20px rgba(60,120,190,.15)!important}
+#nav button{color:var(--mut)!important}
+#nav button.on,#nav .on{color:var(--navy)!important}
+/* البداية */
+#splash{background:linear-gradient(180deg,#9fcdf5 0%,#d7ebfc 55%,#ffffff 100%)!important;color:var(--ink)!important}
+#splash .bgs{opacity:.9}
+#splash h1{color:#16406e!important}
+#splash .ar{color:#34638f!important}
+#splash .tag{color:var(--gold)!important;font-weight:700}
+#splash img{filter:drop-shadow(0 10px 24px rgba(60,120,200,.4))!important}
+.pill.gray{background:#e3edf7;color:#5d7898}
+.li{border-bottom:1px solid var(--line)}
+.top{color:#fff!important;backdrop-filter:none!important}
+.top h1,.top .ib{color:#fff!important}
+.home-intro{background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(226,242,255,.92))!important;border:1px solid rgba(233,197,86,.85)!important;color:var(--ink)!important;box-shadow:0 8px 26px rgba(60,120,190,.2)!important}
+.home-intro h2,.home-intro p,.home-intro .eyebrow{color:var(--navy)!important}
+.home-intro p{color:var(--mut)!important}
+.home-intro *{text-shadow:none!important}
+.hero{background:linear-gradient(135deg,var(--navy2),var(--navy))!important;border:1px solid var(--gold2)!important;color:#fff!important}
+.hero .s{color:#e6f1fc!important}.hero h3{color:#fff3c4!important}
