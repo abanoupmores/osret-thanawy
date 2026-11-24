@@ -26,6 +26,7 @@ window.__DB={
   E2:{type:'rehearsal',title:'اجتماع البنات',when:D+2*864e5,section:'girls'},
   E3:{type:'other',title:'رحلة مشتركة',when:D+3*864e5,section:'both'}
  },
+ linkContests:{C1:{section:'boys',title:'مسابقة الرؤيا',description:'',url:'https://forms.gle/abc123',deadline:0,maxPts:10,closed:false,createdAt:D},C2:{section:'girls',title:'مسابقة البنات',url:'https://forms.gle/zzz',deadline:0,maxPts:5,closed:false,createdAt:D}},
  attendance:{}, adjustments:{}, notifs:{
   N1:{to:'all',section:'boys',kind:'msg',title:'إشعار للبنين',body:'x',at:D},
   N2:{to:'all',section:'girls',kind:'msg',title:'إشعار للبنات',body:'x',at:D}
@@ -68,6 +69,16 @@ async def main():
     ok('approve_member', await ev("window.__DB.users.pm.status")=='active' and await ev("window.__DB.members.M3.approved")==True)
     await ev("go('accounts')"); await pg.wait_for_timeout(300); t=await txt()
     ok('bs_accounts_scope','مينا' in t and 'مريم' not in t)
+    await ev("go('competitions')"); await pg.wait_for_timeout(300); t=await txt()
+    ok('contest_list_scoped','مسابقة الرؤيا' in t and 'مسابقة البنات' not in t)
+    ok('contest_link_present', await ev("[...document.querySelectorAll('a')].some(a=>a.href==='https://forms.gle/abc123')"))
+    await ev("go('contest','C1')"); await pg.wait_for_timeout(300)
+    await ev("document.querySelector('#lp_M1').value='8';lcAward('C1','M1')"); await pg.wait_for_timeout(600)
+    ok('contest_score_to_points', await ev("window.__DB.members.M1.points")==15 and await ev("window.__DB.adjustments['lc_C1_M1'].pts")==8)
+    await ev("document.querySelector('#lp_M1').value='5';lcAward('C1','M1')"); await pg.wait_for_timeout(600)
+    ok('contest_score_correction', await ev("window.__DB.members.M1.points")==12)
+    await ev("document.querySelector('#lp_M1').value='99';lcAward('C1','M1')"); await pg.wait_for_timeout(500)
+    ok('contest_over_max_rejected', await ev("window.__DB.members.M1.points")==12)
     await ev("go('admin')"); await pg.wait_for_timeout(200); t=await txt(); ok('bs_no_admin_dashboard','للمدير العام فقط' in t)
     await ev("go('set')"); await pg.wait_for_timeout(200); ok('bs_settings_readonly', await ev("document.querySelectorAll('input[disabled]').length")>3)
     await ev("go('chat')"); await pg.wait_for_timeout(300); t=await txt(); ok('bs_chat_rooms','محادثة قسم البنين' in t and 'قسم البنات' not in t.replace('اجتماع الخدام','') )
@@ -78,6 +89,7 @@ async def main():
     await ev("go('sched')"); await pg.wait_for_timeout(300); t=await txt()
     ok('gm_events','اجتماع البنات' in t and 'رحلة مشتركة' in t and 'اجتماع البنين' not in t)
     await ev("go('notifs')"); await pg.wait_for_timeout(300); t=await txt(); ok('gm_notifs','إشعار للبنات' in t and 'إشعار للبنين' not in t)
+    await ev("go('competitions')"); await pg.wait_for_timeout(300); t=await txt(); ok('gm_contests','مسابقة البنات' in t and 'مسابقة الرؤيا' not in t and 'نسخ' in t)
     await ev("go('requests')"); await pg.wait_for_timeout(200); ok('gm_no_requests','للخدام فقط' in await txt())
     await ev("go('accounts')"); await pg.wait_for_timeout(200); ok('gm_no_accounts','للخدام فقط' in await txt())
     await ev("out()"); await pg.wait_for_timeout(600)

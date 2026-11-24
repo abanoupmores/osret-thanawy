@@ -57,5 +57,15 @@ await T('boys servant CANNOT suspend a servant',assertFails(updateDoc(doc(as('sb
 await T('boys servant CAN suspend boys member',assertSucceeds(updateDoc(doc(as('sb'),'users/mb'),{status:'suspended'})));
 await T('girls servant CANNOT suspend boys member',assertFails(updateDoc(doc(as('sg'),'users/mb'),{status:'active'})));
 await T('suspended member loses access',assertFails(Q(as('mb'),'members',['boys','both'])));
+// مسابقات الرابط
+await env.withSecurityRulesDisabled(async ctx=>{await setDoc(doc(ctx.firestore(),'linkContests/CB'),{title:'t',url:'https://forms.gle/x',maxPts:10,section:'boys',closed:false})});
+await T('boys servant creates contest',assertSucceeds(setDoc(doc(as('sb'),'linkContests/c1'),{title:'t',url:'https://forms.gle/x',maxPts:10,section:'boys',closed:false})));
+await T('contest with http link denied',assertFails(setDoc(doc(as('sb'),'linkContests/c2'),{title:'t',url:'http://x.com/a',maxPts:10,section:'boys',closed:false})));
+await T('boys servant CANNOT create girls contest',assertFails(setDoc(doc(as('sb'),'linkContests/c3'),{title:'t',url:'https://forms.gle/x',maxPts:10,section:'girls',closed:false})));
+await T('member CANNOT create contest',assertFails(setDoc(doc(as('mb'),'linkContests/c4'),{title:'t',url:'https://forms.gle/x',maxPts:10,section:'boys',closed:false})));
+await T('girls member CANNOT read boys contest',assertFails(getDoc(doc(as('mg'),'linkContests/CB'))));
+await T('servant awards 8/10',assertSucceeds(setDoc(doc(as('sb'),'adjustments/lc_CB_MB'),{type:'contest',contestId:'CB',memberId:'MB',section:'boys',pts:8,reason:'x',by:'sb',at:1})));
+await T('servant CANNOT award above max',assertFails(setDoc(doc(as('sb'),'adjustments/lc_CB_MB2'),{type:'contest',contestId:'CB',memberId:'MB',section:'boys',pts:11,reason:'x',by:'sb',at:1})));
+await T('member CANNOT award himself',assertFails(setDoc(doc(as('mb'),'adjustments/lc_CB_MB3'),{type:'contest',contestId:'CB',memberId:'MB',section:'boys',pts:10,reason:'x',by:'mb',at:1})));
 await env.cleanup();
 console.log(bad?`\n${bad} FAILED`:'\nall passed');process.exit(bad?1:0);

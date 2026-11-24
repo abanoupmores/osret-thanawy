@@ -11,7 +11,7 @@ t('لا بقايا choir',!/choir/i.test(R)&&!/choir/i.test(S));
 // استخراج كتل match على مستوى المستندات
 const blocks=R.split(/\n    match \//).slice(1).map(s=>({name:s.match(/^([A-Za-z]+)\//)[1],body:s}));
 t('تم استخراج كتل المجموعات ('+blocks.length+')',blocks.length>=17);
-const sectionOwned=['members','events','attendance','adjustments','notifs','hymnFolders','hymns','polls','pollVotes','competitions','competitionRequests','competitionLeaderboard','competitionAttempts','adminRequests'];
+const sectionOwned=['members','events','attendance','adjustments','notifs','hymnFolders','hymns','polls','pollVotes','competitions','linkContests','competitionRequests','competitionLeaderboard','competitionAttempts','adminRequests'];
 for(const c of sectionOwned){const b=blocks.find(x=>x.name===c);t('عزل القسم مفروض في '+c,!!b&&/inScope\(|readSec\(|staffOf\(|isAdmin\(\)/.test(b.body)&&!/allow read: if signedIn\(\);/.test(b.body))}
 const users=blocks.find(x=>x.name==='users').body;
 t('users: لا إنشاء بدور admin',!/role == 'admin'.*\n.*allow create/.test(users)&&![...users.matchAll(/allow create:[\s\S]*?;/g)].some(m=>/role == 'admin'/.test(m[0])));
@@ -22,4 +22,7 @@ t('config: لا كتابة إلا المدير أو weekly القسم',/allow wr
 t('الشات: غرف بحسب القسم + المدير',/sectionChats[\s\S]*mySec\(\) == room/.test(R)&&/servantChat[\s\S]*isServant\(\) && mySec\(\) == room/.test(R));
 t('لا قاعدة عامة match /{document=**}',!/\{document=\*\*\}/.test(R));
 t('storage: المسار يتضمن القسم والمدير/الخادم فقط للكتابة',/hymns\/\{section\}\/\{hymnId\}\/\{file\}/.test(S)&&/isServantOf\(section\)/.test(S));
+const lc=blocks.find(x=>x.name==='linkContests').body;
+t('المسابقات: الرابط https فقط والدرجة العظمى محدودة',/matches\('\^https:\/\//.test(lc)&&/maxPts <= 100/.test(lc));
+t('درجة المسابقة: حدود 0..maxPts وقسم المخدوم',/contestPtsOk/.test(R)&&/pts <= get\(.*linkContests/.test(R));
 process.exit(ok?0:1);
