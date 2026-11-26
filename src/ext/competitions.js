@@ -7,6 +7,8 @@ export function installCompetitions(X){
   const err=e=>e&&e.code==='permission-denied'?'مفيش صلاحية. تأكد من نشر قواعد Firestore الأخيرة':e&&e.code==='unavailable'?'الاتصال بالإنترنت غير متاح':'تعذر التنفيذ، حاول تاني';
   const list=()=>(S().linkContests||[]).slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   const aid=(c,m)=>'lc_'+c+'_'+m;
+  const drafts={};  // درجات مكتوبة ولم تُحفظ: تبقى عند تحديث الصفحة
+  window.lcDraft=(c,m,v)=>{drafts[c+'_'+m]=v};
   const myAdj=c=>{const m=X.mem();return m?S().adj.find(a=>a.id===aid(c.id,m.id)):null};
   const open=c=>!c.closed&&(!c.deadline||Date.now()<=c.deadline);
   const dl=n=>n?new Date(n).toLocaleString('ar-EG',{dateStyle:'medium',timeStyle:'short'}):'بدون موعد نهائي';
@@ -59,7 +61,7 @@ export function installCompetitions(X){
     const adj=m=>S().adj.find(a=>a.id===aid(c.id,m.id));
     return pg(`${card(c).replace(/<div class="row" style="margin-top:10px;gap:8px">[\s\S]*<\/div><\/div>$/,'</div>')}
     <div class="card"><h3>الدرجات (من ${c.maxPts})</h3><div class="s" style="margin-bottom:8px">شوف نتيجة الرابط وادخل درجة كل مخدوم. الدرجة بتتحوّل نقط فورًا، وتقدر تصححها بعدين.</div>
-    ${M.map(m=>{const a=adj(m);return `<div class="li"><div class="t"><b>${esc(m.name)}</b><span class="s">${a?'الدرجة الحالية: '+a.pts:'لم تُدخل'}</span></div><div class="row" style="flex:none;gap:6px"><input id="lp_${m.id}" type="number" min="0" max="${c.maxPts}" step="1" value="${a?a.pts:''}" placeholder="0" style="width:74px;margin:0;text-align:center"><button class="btn sm g" style="width:auto" onclick="lcAward('${c.id}','${m.id}')">حفظ</button></div></div>`}).join('')||'<div class="s">مفيش مخدومين</div>'}
+    ${M.map(m=>{const a=adj(m);return `<div class="li"><div class="t"><b>${esc(m.name)}</b><span class="s">${a?'الدرجة الحالية: '+a.pts:'لم تُدخل'}</span></div><div class="row" style="flex:none;gap:6px"><input id="lp_${m.id}" type="number" min="0" max="${c.maxPts}" step="1" value="${drafts[c.id+'_'+m.id]!==undefined?drafts[c.id+'_'+m.id]:(a?a.pts:'')}" oninput="lcDraft('${c.id}','${m.id}',this.value)" placeholder="0" style="width:74px;margin:0;text-align:center"><button class="btn sm g" style="width:auto" onclick="lcAward('${c.id}','${m.id}')">حفظ</button></div></div>`}).join('')||'<div class="s">مفيش مخدومين</div>'}
     <button class="btn" style="margin-top:10px" onclick="lcAll('${c.id}')">حفظ كل الدرجات المكتوبة</button></div>
     <div class="row" style="gap:8px"><button class="btn o" onclick="lcToggle('${c.id}')">${c.closed?'إعادة فتح':'إغلاق المسابقة'}</button><button class="btn o" style="color:var(--no);border-color:var(--no)" onclick="lcDel('${c.id}')">حذف</button></div>`);
   }};
@@ -71,6 +73,7 @@ export function installCompetitions(X){
       if(d===0&&a.exists())return 0;
       tx.set(aref,{memberId:m.id,section:m.section,pts:val,type:'contest',contestId:c.id,reason:'مسابقة: '+c.title,by:X.me().name||'',at:Date.now()});
       tx.update(mref,{points:(mm.data().points||0)+d});
+      delete drafts[c.id+'_'+m.id];
       tx.set(F.doc(F.collection(db,'notifs')),{to:m.id,section:m.section,kind:'pts',title:'🏆 نتيجة المسابقة',body:c.title+' — درجتك '+val+' من '+c.maxPts+' (اتضافت لرصيدك)',at:Date.now()});
       return d});
   }

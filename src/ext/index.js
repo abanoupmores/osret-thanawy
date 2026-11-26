@@ -7,6 +7,7 @@ import {installTools} from './tools.js';
 import {installChat} from './chat.js';
 import {installCompetitions} from './competitions.js';
 import {installAdmin} from './admin.js';
+import {installActivities} from './activities.js';
 
 const ICONS={
 music:'<path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
@@ -35,6 +36,7 @@ export function installExt(X){
   installChat(X);
   installCompetitions(X);
   installAdmin(X);
+  installActivities(X);
 }
 
 // تُستدعى من start() بعد تسجيل الدخول: مستمعات الـ collections الجديدة فقط.

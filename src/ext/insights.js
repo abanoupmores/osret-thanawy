@@ -58,9 +58,9 @@ export function installInsights(X){
     if(!confirm(`تصفير نقاط ${m.name} (${cur})؟ هيتسجل كخصم في السجل ومش هيتمسح أي حضور.`))return;
     try{
       const b=F.writeBatch(db);
-      b.set(F.doc(F.collection(db,'adjustments')),{memberId:id,pts:-cur,reason:'تصفير النقاط',by:X.me().name,at:Date.now(),kind:'reset'});
+      b.set(F.doc(F.collection(db,'adjustments')),{memberId:id,section:m.section,pts:-cur,reason:'تصفير النقاط',by:X.me().name,at:Date.now(),kind:'reset'});
       b.update(F.doc(db,'members',id),{points:F.increment(-cur)});
-      b.set(F.doc(F.collection(db,'notifs')),{to:id,kind:'pts',title:'تم خصم نقاط',body:'تصفير رصيد النقاط ('+cur+')',at:Date.now()});
+      b.set(F.doc(F.collection(db,'notifs')),{to:id,section:m.section,kind:'pts',title:'تم خصم نقاط',body:'تصفير رصيد النقاط ('+cur+')',at:Date.now()});
       await b.commit();toast('تم تصفير النقاط');X.render(1);
     }catch(e){toast(e&&e.code==='permission-denied'?'مفيش صلاحية':'فشل التنفيذ',0)}
   };
