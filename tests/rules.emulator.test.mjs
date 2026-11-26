@@ -67,5 +67,15 @@ await T('girls member CANNOT read boys contest',assertFails(getDoc(doc(as('mg'),
 await T('servant awards 8/10',assertSucceeds(setDoc(doc(as('sb'),'adjustments/lc_CB_MB'),{type:'contest',contestId:'CB',memberId:'MB',section:'boys',pts:8,reason:'x',by:'sb',at:1})));
 await T('servant CANNOT award above max',assertFails(setDoc(doc(as('sb'),'adjustments/lc_CB_MB2'),{type:'contest',contestId:'CB',memberId:'MB',section:'boys',pts:11,reason:'x',by:'sb',at:1})));
 await T('member CANNOT award himself',assertFails(setDoc(doc(as('mb'),'adjustments/lc_CB_MB3'),{type:'contest',contestId:'CB',memberId:'MB',section:'boys',pts:10,reason:'x',by:'mb',at:1})));
+// نقاط الأنشطة
+const act=(id,d)=>setDoc(doc(as('sb'),'adjustments/'+id),d);
+const A=(o)=>({memberId:'MB',section:'boys',type:'activity',date:'2026-11-26',reason:'x',by:'sb',at:1,...o});
+await T('activity mass+tunic = 8 (defaults 5+3)',assertSucceeds(act('ac_2026-11-26_MB',A({items:{mass:true,tunic:true,communion:false,school:false},pts:8}))));
+await T('activity wrong total denied',assertFails(act('ac_2026-11-25_MB',A({date:'2026-11-25',items:{mass:true,tunic:false,communion:false,school:false},pts:50}))));
+await T('activity bad id denied',assertFails(act('zzz',A({items:{mass:true,tunic:false,communion:false,school:false},pts:5}))));
+await T('girls servant CANNOT record activity for boys member',assertFails(setDoc(doc(as('sg'),'adjustments/ac_2026-11-24_MB'),A({date:'2026-11-24',items:{mass:true,tunic:false,communion:false,school:false},pts:5}))));
+await T('manual points without reason denied',assertFails(addDoc(collection(as('sb'),'adjustments'),{memberId:'MB',section:'boys',pts:5,reason:'',by:'sb',at:1})));
+await T('manual points with reason allowed',assertSucceeds(addDoc(collection(as('sb'),'adjustments'),{memberId:'MB',section:'boys',pts:5,reason:'مشاركة مميزة',by:'sb',at:1})));
+await T('member CANNOT write activity',assertFails(setDoc(doc(as('mb'),'adjustments/ac_2026-11-23_MB'),A({date:'2026-11-23',by:'mb',items:{mass:true,tunic:false,communion:false,school:false},pts:5}))));
 await env.cleanup();
 console.log(bad?`\n${bad} FAILED`:'\nall passed');process.exit(bad?1:0);

@@ -25,4 +25,8 @@ t('storage: المسار يتضمن القسم والمدير/الخادم فق�
 const lc=blocks.find(x=>x.name==='linkContests').body;
 t('المسابقات: الرابط https فقط والدرجة العظمى محدودة',/matches\('\^https:\/\//.test(lc)&&/maxPts <= 100/.test(lc));
 t('درجة المسابقة: حدود 0..maxPts وقسم المخدوم',/contestPtsOk/.test(R)&&/pts <= get\(.*linkContests/.test(R));
+const adj=blocks.find(x=>x.name==='adjustments').body;
+t('نقاط الأنشطة: النقاط = مجموع قيم الإعدادات والتونية للبنين فقط',/actPts\(\)/.test(adj)&&/request\.resource\.data\.pts == actPts\(\)/.test(adj)&&/section == 'boys' \|\| !\('tunic' in/.test(adj));
+t('النقاط اليدوية تتطلب سببًا',/typedOrReasoned\(\)/.test(adj)&&/size\(\) > 0/.test(adj));
+t('نقاط حضور QR الافتراضية 0 في القواعد',/cfgNum\('max', 0\)/.test(R));
 process.exit(ok?0:1);
