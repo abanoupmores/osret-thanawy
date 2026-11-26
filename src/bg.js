@@ -3,7 +3,11 @@ const DIR = 'assets/backgrounds/';
 export const BG = {
   light:   {n: 'أشعة النور', img: 'heaven-1.webp'},
   rainbow: {n: 'القوس حول العرش', img: 'heaven-2.webp'},
-  gold:    {n: 'بحر زجاج وذهب', img: 'heaven-3.webp'}
+  gold:    {n: 'بحر زجاج وذهب', img: 'heaven-3.webp'},
+  cross:   {n: 'صليب النور', img: 'heaven-4.webp'},
+  domes:   {n: 'قباب الكنيسة عند الفجر', img: 'heaven-5.webp'},
+  coptic:  {n: 'الزخرفة القبطية', img: 'heaven-6.webp'},
+  arch:    {n: 'قوس نافذة الكنيسة', img: 'heaven-7.webp'}
 };
 const url = f => `url('${DIR}${f}')`;
 const thumb = f => `<div style="position:absolute;inset:0;background:${url(f)} center/cover no-repeat"></div>`;

@@ -22,6 +22,7 @@ const SECN={boys:'قسم البنين',girls:'قسم البنات',both:'الب�
 const chName=k=>SECN[k]||'';
 const TY={rehearsal:['📖','اجتماع'],concert:['🎉','فعالية'],other:['📌','نشاط']};
 const IC={
+check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
 link:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
 home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
 users:'<circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c3 0 4.8 1.9 4.8 5"/>',
@@ -66,7 +67,7 @@ const newSec=want=>isA()?(['boys','girls','both'].includes(want)?want:(wsec==='b
 const secOpts=(both,sel)=>{const L2=isA()?[...(both?[['both','البنين والبنات معًا']]:[]),['boys','قسم البنين'],['girls','قسم البنات']]:[[me.section,SECN[me.section]]];const s0=sel||(isA()?(wsec==='boys'||wsec==='girls'?wsec:(both?'both':'boys')):me.section);return L2.map(([k,n])=>`<option value="${k}" ${k===s0?'selected':''}>${n}</option>`).join('')};
 const secLogo=s=>s==='boys'?'logo-boys.png':s==='girls'?'logo-girls.png':'logo.png';
 const curSecKey=()=>me?(isA()?(wsec==='all'?'':wsec):me.section):(entry&&(entry.sec==='boys'||entry.sec==='girls')?entry.sec:'');
-const C=()=>({max:5,step:5,open:15,close:60,zero:30,concert:75,solo:85,low:60,welcomePts:5,...S.cfg});
+const C=()=>({max:0,step:5,open:15,close:60,zero:30,concert:75,solo:85,low:60,welcomePts:5,massPts:5,tunicPts:3,communionPts:5,schoolPts:5,...S.cfg});
 const mem=()=>me&&S.members.find(m=>m.id===me.memberId);
 
 // ---------- أدوات ----------
@@ -289,7 +290,7 @@ const tile=(p,i,t,badge)=>`<button class="tile" onclick="go('${p}')">${badge?`<e
 const polBadge=()=>{const n=X.ext.activePolls?X.ext.activePolls().length:0;return n&&!isS()?n:''};
 PG.home={bare:1,v:()=>{
  const e=nextEv(isS()?null:mem()),m=mem();
- const T=isS()?[tile('members','users','مخدومي'),tile('attend','check','الحضور'),tile('sched','cal','الجداول والأنشطة'),tile('points','star','النقاط'),tile('hymns','music','الترانيم'),tile('competitions','cup','المسابقات'),tile('polls','poll','التصويت',polBadge()),tile('notifs','bell','الإشعارات',unread()||''),tile('chat','chat','الشات'),...(isS()?[tile('requests','users','طلبات التسجيل',(S.pendM.length+(isA()?S.users.filter(u=>u.status==='pending'&&u.role==='servant').length:0))||'')]:[]),...(isA()?[tile('admin','gear','لوحة المدير العام')]:[]),tile('more','dots','المزيد')]
+ const T=isS()?[tile('members','users','مخدومي'),tile('attend','check','الحضور'),tile('sched','cal','الجداول والأنشطة'),tile('points','star','النقاط'),tile('hymns','music','الترانيم'),tile('competitions','cup','المسابقات'),tile('polls','poll','التصويت',polBadge()),tile('notifs','bell','الإشعارات',unread()||''),tile('chat','chat','الشات'),...(isS()?[tile('acts','check','تسجيل الأنشطة')]:[]),...(isS()?[tile('requests','users','طلبات التسجيل',(S.pendM.length+(isA()?S.users.filter(u=>u.status==='pending'&&u.role==='servant').length:0))||'')]:[]),...(isA()?[tile('admin','gear','لوحة المدير العام')]:[]),tile('more','dots','المزيد')]
   :[tile('attend','check','حضوري'),tile('sched','cal','الجداول والأنشطة'),tile('points','star','نقاطي'),tile('board','cup','لوحة الترتيب'),tile('hymns','music','الترانيم'),tile('competitions','cup','المسابقات'),tile('polls','poll','التصويت',polBadge()),tile('notifs','bell','الإشعارات',unread()||''),tile('chat','chat','الشات'),tile('more','dots','المزيد')];
  return head()+pg(`<section class="home-intro"><div class="home-intro-copy"><span class="eyebrow">أهلاً بيك في ${esc(curSecKey()?SECN[curSecKey()]:CFG.service)}</span><h2>${isA()?'أهلاً بالمدير العام':isS()?'ربنا يقوّي خدمتك':`أهلاً يا ${esc((me&&me.name||'صديقنا').split(' ')[0])}`}</h2><p>${esc(CFG.service)} — ${esc(CFG.church)}</p></div><span class="home-cross">✝</span></section><div class="home-section-head"><div><span class="eyebrow">مساحتك الروحية</span><h3>الخدمات والأقسام</h3></div><span class="section-mark">✦</span></div>${isA()?`<div class="chips">${[['boys','قسم البنين'],['girls','قسم البنات'],['all','عرض القسمين']].map(([k,n])=>`<button class="${wsec===k?'on':''}" onclick="setW('${k}')">${n}</button>`).join('')}</div>`:''}<div class="grid2 home-grid">${T.join('')}</div>${isS()?'':m?`<div class="card hero home-points"><div><div class="s">رصيد نقاطك</div><div class="pts">${m.points||0}</div><div class="s">${chName(m.section)} · نسبة حضورك ${stat(m).p===null?'—':stat(m).p+'%'}</div></div><span class="points-seal">✦</span></div>`:''}${X.ext.homeExtras?X.ext.homeExtras():''}<div class="home-section-head"><div><span class="eyebrow">تابع خدمتك</span><h3>الحدث القادم</h3></div></div><div class="card home-event">${e?`<div class="event-symbol">${TY[e.type][0]}</div><div class="event-copy"><b>${esc(e.title)}</b><div class="s">${fmt(e.when)}</div>${e.note?`<div class="event-note">${esc(e.note)}</div>`:''}</div>`:'<div class="event-symbol">✧</div><div class="event-copy"><b>مفيش أحداث قادمة</b><div class="s">تابع الإشعارات لمعرفة كل جديد</div></div>'}</div>${verseCard()}`);
 }};
@@ -415,11 +416,11 @@ PG.points={t:()=>isS()?'النقاط':'نقاطي',v:()=>{
  const L2=[...S.members].sort((a,b)=>(a.name||'').localeCompare(b.name||'','ar')),m=S.members.find(x=>x.id===ptM);
  return pg(`<div class="card"><h3>اختر المخدوم</h3><select onchange="sv('ptM',this.value)"><option value="">— اختر —</option>${L2.map(x=>`<option value="${x.id}" ${x.id===ptM?'selected':''}>${esc(x.name)} (${chName(x.section)})</option>`).join('')}</select></div>
  ${m?`<div class="card hero" style="text-align:center"><div class="s">رصيد ${esc(m.name)}</div><div class="pts">${m.points||0}</div></div>
- <div class="card"><h3>إضافة / خصم نقاط</h3><select id="pk"><option value="-1">خصم نقاط</option><option value="1">إضافة نقاط</option></select><input id="pv2" type="number" min="1" inputmode="numeric" placeholder="عدد النقاط"><input id="pr" placeholder="السبب (يظهر للمخدوم)"><button class="btn g" onclick="doAdj()">تأكيد</button><div class="s" style="margin-top:8px">هيوصل للمخدوم إشعار بالخصم أو الإضافة.</div><div style="height:8px"></div><button class="btn sm o" onclick="ptReset('${m.id}')">تصفير نقاط المخدوم (يتسجل كخصم)</button></div>
+ <div class="card"><h3>نقاط إضافية / خصم</h3><select id="pk"><option value="-1">خصم نقاط</option><option value="1">إضافة نقاط</option></select><input id="pv2" type="number" min="1" inputmode="numeric" placeholder="عدد النقاط"><input id="pr" placeholder="السبب (مطلوب — يظهر للمخدوم)"><button class="btn g" onclick="doAdj()">تأكيد</button><div class="s" style="margin-top:8px">هيوصل للمخدوم إشعار بالخصم أو الإضافة.</div><div style="height:8px"></div><button class="btn sm o" onclick="ptReset('${m.id}')">تصفير نقاط المخدوم (يتسجل كخصم)</button></div>
  <div class="card"><h3>تفصيل النقاط وتاريخ الخصومات</h3>${ledger(m).map(ledRow).join('')||'<div class="s">لسه</div>'}</div>`:'<div class="card s">اختار مخدوم علشان تشوف نقاطه أو تخصم منه.</div>'}`);
 }};
 window.doAdj=async()=>{const m=S.members.find(x=>x.id===ptM),v=Math.abs(parseInt($('#pv2').value)),sg=+$('#pk').value,why=$('#pr').value.trim();
- if(!m||!v){toast('اكتب عدد النقاط',0);return}if(sg<0&&!why&&!confirm('تخصم من غير سبب؟'))return;
+ if(!m||!v){toast('اكتب عدد النقاط',0);return}if(!why){toast('اكتب السبب (بيظهر للمخدوم)',0);return}
  const p=sg*v;try{const b=writeBatch(db);b.set(doc(collection(db,'adjustments')),{memberId:m.id,section:m.section,pts:p,reason:why,by:me.name,at:Date.now()});b.update(doc(db,'members',m.id),{points:increment(p)});
   b.set(doc(collection(db,'notifs')),{to:m.id,section:m.section,kind:'pts',title:p<0?'تم خصم نقاط':'تمت إضافة نقاط',body:(p<0?'خصم '+v+' نقطة':'إضافة '+v+' نقطة')+(why?' — '+why:''),at:Date.now()});await b.commit();toast('تم');render(1)}catch(e){toast('فشل التنفيذ',0)}};
 
@@ -456,23 +457,25 @@ window.spf=async()=>{const n=$('#fn').value.trim(),p=norm($('#fp').value);if(!n)
 
 // ---------- المزيد ----------
 const mrowL=(p,i,t)=>`<div class="li" onclick="go('${p}')"><span class="nic" style="background:#e4ecfb;color:var(--navy)">${ic(i)}</span><div class="t"><b>${t}</b></div><span class="ch">${ic('chev')}</span></div>`;
-PG.more={t:'المزيد',v:()=>pg(`<div class="card">${isA()?mrowL('admin','gear','لوحة المدير العام'):''}${isS()?mrowL('requests','users','طلبات التسجيل')+mrowL('accounts','user','الحسابات والصلاحيات')+mrowL('report','chart','التقرير الأسبوعي')+mrowL('analytics','chart','الإحصائيات والتحليلات')+mrowL('weekly','clock','الاجتماع الأسبوعي الثابت')+mrowL('htrash','trash','سلة المحذوفات (الترانيم)')+mrowL('set','gear','الإعدادات ونظام النقاط'):mrowL('history','hist','سجل حضوري وغيابي')}${mrowL('board','cup','لوحة الترتيب')}${mrowL('remind','bell','التذكيرات والإعدادات')}${mrowL('upd','upd','التحديثات')}${mrowL('rules','book','القواعد (الرولز)')}${mrowL('bgs','img','الخلفية')}<div class="li" onclick="out()"><span class="nic" style="background:#fde3e7;color:var(--no)">${ic('out')}</span><div class="t"><b>تسجيل خروج</b></div></div></div>`)};
+PG.more={t:'المزيد',v:()=>pg(`<div class="card">${isA()?mrowL('admin','gear','لوحة المدير العام'):''}${isS()?mrowL('acts','check','تسجيل الأنشطة')+mrowL('requests','users','طلبات التسجيل')+mrowL('accounts','user','الحسابات والصلاحيات')+mrowL('report','chart','التقرير الأسبوعي')+mrowL('analytics','chart','الإحصائيات والتحليلات')+mrowL('weekly','clock','الاجتماع الأسبوعي الثابت')+mrowL('htrash','trash','سلة المحذوفات (الترانيم)')+mrowL('set','gear','الإعدادات ونظام النقاط'):mrowL('history','hist','سجل حضوري وغيابي')}${mrowL('board','cup','لوحة الترتيب')}${mrowL('remind','bell','التذكيرات والإعدادات')}${mrowL('upd','upd','التحديثات')}${mrowL('rules','book','القواعد (الرولز)')}${mrowL('bgs','img','الخلفية')}<div class="li" onclick="out()"><span class="nic" style="background:#fde3e7;color:var(--no)">${ic('out')}</span><div class="t"><b>تسجيل خروج</b></div></div></div>`)};
 
 // ---------- القواعد ----------
 const R=(i,t)=>`<div class="rule"><i>${i}</i><div>${t}</div></div>`;
+const secK=()=>isA()?(wsec==='girls'?'girls':'boys'):(me&&me.section);
 PG.rules={t:'الرولز',v:()=>{const c=C(),o=Math.min(c.open,30);return pg(`<div class="tabs"><button class="${rt==='m'?'on':''}" onclick="sv('rt','m')">المخدوم</button><button class="${rt==='s'?'on':''}" onclick="sv('rt','s')">الخادم</button></div>
- ${rt==='m'?`<div class="card"><h3>الحضور والنقاط</h3>
- ${R('1',`تسجيل الحضور بيفتح قبل ميعاد الاجتماع بـ <b>${o}</b> دقيقة.`)}
- ${R('2',`الحضور من وقت فتح التسجيل لحد ميعاد الاجتماع بالظبط = <b>${c.max}</b> نقط.`)}
- ${R('3',`التأخير: كل <b>${c.step}</b> دقايق بتتخصم نقطة، وبعد <b>${c.zero}</b> دقيقة تأخير بدون نقط خالص.`)}
- ${R('4',`بعد الاجتماع بـ <b>${c.close}</b> دقيقة التسجيل بيتقفل، وبعدها الخادم بس هو اللي يضيف حضورك يدويًا.`)}
- ${R('5','معاك موبايل؟ امسح كود الحدث من التطبيق. مفيش موبايل؟ الخادم بيسجّلك يدويًا.')}
- ${R('6','النقاط بتتحسب على نسبة الحضور وحسب نظام الخادم.')}
- ${R('7','من حق الخادم يخصم نقاط، وبيوصلك إشعار بالسبب.')}
- ${R('8',`الالتزام: نسبة حضور <b>${c.concert}%</b> فأكتر = ملتزم، و<b>${c.solo}%</b> فأكتر = ملتزم ممتاز.`)}</div>`
+ ${rt==='m'?`<div class="card"><h3>إزاي بتجمع نقاط؟</h3>
+  ${R('1',`حضور القداس = <b>${c.massPts}</b> نقط.`)}
+  ${secK()==='girls'?'':R('2',`لبس التونية = <b>${c.tunicPts}</b> نقط.`)}
+  ${R(secK()==='girls'?'2':'3',`التناول = <b>${c.communionPts}</b> نقط.`)}
+  ${R(secK()==='girls'?'3':'4',`حضور مدارس الأحد = <b>${c.schoolPts}</b> نقط.`)}
+  ${R(secK()==='girls'?'4':'5','الخادم هو اللي بيسجّل أنشطتك كل أسبوع، وبيوصلك إشعار بالنقاط.')}
+  ${R(secK()==='girls'?'5':'6','الخادم ممكن يضيف لك نقاط إضافية، ودايمًا بيكتب السبب.')}
+  ${R(secK()==='girls'?'6':'7','من حق الخادم يخصم نقاط، وبيوصلك إشعار بالسبب.')}
+  ${R(secK()==='girls'?'7':'8',`الالتزام: نسبة حضور <b>${c.concert}%</b> فأكتر = ملتزم، و<b>${c.solo}%</b> فأكتر = ملتزم ممتاز.`)}</div>`
  :`<div class="card"><h3>مسؤوليات الخادم</h3>
  ${R('1','أضف المخدومين (الاسم، التليفون، تاريخ الميلاد، الصورة) أو خليهم يسجلوا بنفسهم.')}
- ${R('2','سجّل الحضور بمسح كود المخدوم، أو يدويًا لو معاهوش موبايل.')}
+ ${R('2','سجّل أنشطة كل مخدوم من «تسجيل الأنشطة» (القداس، التناول، مدارس الأحد'+(secK()==='girls'?'':'، لبس التونية')+')، والنقاط بتتحسب تلقائيًا.')}
+  ${R('•','لنقاط إضافية أو خصم: من «النقاط»، ولازم تكتب السبب.')}
  ${R('3','انشر الاجتماعات والفعاليات من «الجداول والأنشطة» ويوصل إشعار للمخدومين.')}
  ${R('4','وصلك إشعار بعيد ميلاد المخدوم مع نسبة حضوره للافتقاد.')}
  ${R('5','تقرير الحضور بيجيلك كل ثلاثاء الساعة 9 صباحًا بنسب كل مخدوم.')}
@@ -494,8 +497,9 @@ PG.report={t:'تقرير الحضور الأسبوعي',v:()=>{
 
 // ---------- الإعدادات ----------
 PG.set={t:'الإعدادات',v:()=>{const c=C(),f=(k,l)=>`<label>${l}</label><input id="c_${k}" type="number" value="${c[k]}" ${isA()?'':'disabled'}>`;
- return pg(`<div class="card"><h3>نظام النقاط</h3>${f('max','نقاط الحضور في الميعاد (حتى 20)')}${f('step','خصم نقطة كل (دقيقة تأخير)')}${f('zero','بدون نقاط بعد (دقيقة تأخير)')}${f('open','فتح التسجيل قبل الاجتماع بـ (دقيقة، حتى 30)')}${f('close','قفل التسجيل بعد الاجتماع بـ (دقيقة)')}<h3>الاستحقاق والافتقاد</h3>${f('concert','حد الالتزام (%)')}${f('solo','حد الالتزام الممتاز (%)')}${f('low','حد الافتقاد (%)')}<h3>النقاط الترحيبية</h3>${f('welcomePts','نقاط ترحيبية للمخدوم الجديد (تُصرف مرة واحدة، 0 = إيقاف)')}${isA()?`<button class="btn g" onclick="sc()">حفظ</button>`:'<div class="s">تعديل نظام النقاط من المدير العام فقط.</div>'}</div><button class="btn o" onclick="go('rules')">${ic('book')} معاينة القواعد كما يراها المخدوم</button>`)}};
-window.sc=async()=>{if(!isA()){toast('للمدير العام فقط',0);return}const d={};['max','step','zero','open','close','concert','solo','low','welcomePts'].forEach(k=>d[k]=+$('#c_'+k).value);
+ return pg(`<div class="card"><h3>نقاط الأنشطة</h3>${f('massPts','حضور القداس (نقطة)')}${f('tunicPts','لبس التونية — البنين فقط (نقطة)')}${f('communionPts','التناول (نقطة)')}${f('schoolPts','حضور مدارس الأحد (نقطة)')}<h3>حضور الاجتماعات والفعاليات (QR)</h3>${f('max','نقاط الحضور في الميعاد (0 = بدون نقاط، حتى 20)')}${f('step','خصم نقطة كل (دقيقة تأخير)')}${f('zero','بدون نقاط بعد (دقيقة تأخير)')}${f('open','فتح التسجيل قبل الاجتماع بـ (دقيقة، حتى 30)')}${f('close','قفل التسجيل بعد الاجتماع بـ (دقيقة)')}<h3>الاستحقاق والافتقاد</h3>${f('concert','حد الالتزام (%)')}${f('solo','حد الالتزام الممتاز (%)')}${f('low','حد الافتقاد (%)')}<h3>النقاط الترحيبية</h3>${f('welcomePts','نقاط ترحيبية للمخدوم الجديد (تُصرف مرة واحدة، 0 = إيقاف)')}${isA()?`<button class="btn g" onclick="sc()">حفظ</button>`:'<div class="s">تعديل نظام النقاط من المدير العام فقط.</div>'}</div><button class="btn o" onclick="go('rules')">${ic('book')} معاينة القواعد كما يراها المخدوم</button>`)}};
+window.sc=async()=>{if(!isA()){toast('للمدير العام فقط',0);return}const d={};['max','step','zero','open','close','concert','solo','low','welcomePts','massPts','tunicPts','communionPts','schoolPts'].forEach(k=>d[k]=+$('#c_'+k).value);
+ if(['massPts','tunicPts','communionPts','schoolPts'].some(k=>!Number.isInteger(d[k])||d[k]<0||d[k]>50)){toast('نقاط الأنشطة أعداد صحيحة من 0 لـ 50',0);return}
  if(d.open>30||d.open<0||d.step<1||d.max<0||d.max>20||d.zero<1||!Number.isInteger(d.welcomePts)||d.welcomePts<0||d.welcomePts>50){toast('راجع القيم (فتح التسجيل حتى 30 دقيقة، النقاط حتى 20، الترحيبية 0–50 عدد صحيح)',0);return}
  try{await setDoc(doc(db,'config','main'),d,{merge:true});toast('تم الحفظ')}catch(e){toast('فشل الحفظ',0)}};
 
