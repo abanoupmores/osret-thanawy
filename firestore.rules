@@ -185,7 +185,7 @@ service cloud.firestore {
           && memberDoc(request.resource.data.memberId).data.section == request.resource.data.section
           && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.section in [mySec(), 'both']
           && attendanceId == request.resource.data.eventId + '_' + request.resource.data.memberId
-          && request.resource.data.pts >= 0 && request.resource.data.pts <= cfgNum('max', 5)
+          && request.resource.data.pts >= 0 && request.resource.data.pts <= cfgNum('max', 0)
           && request.time.toMillis() >= get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.when - 31 * 60 * 1000
           && request.time.toMillis() <= get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.when + 181 * 60 * 1000);
       allow update, delete: if staffOf(resource.data) && (request.method == 'delete' || sameSec());
@@ -209,15 +209,40 @@ service cloud.firestore {
           && request.resource.data.pts <= get(/databases/$(database)/documents/linkContests/$(request.resource.data.contestId)).data.maxPts
           && get(/databases/$(database)/documents/linkContests/$(request.resource.data.contestId)).data.section in [request.resource.data.section, 'both'];
       }
+      // نقاط الأنشطة: المعرّف ac_{تاريخ}_{مخدوم}، العناصر مفاتيح معروفة (tunic للبنين فقط)، والنقاط = مجموع قيم الإعدادات
+      function actPts() {
+        return (request.resource.data.items.get('mass', false) == true ? cfgNum('massPts', 5) : 0)
+          + (request.resource.data.items.get('tunic', false) == true ? cfgNum('tunicPts', 3) : 0)
+          + (request.resource.data.items.get('communion', false) == true ? cfgNum('communionPts', 5) : 0)
+          + (request.resource.data.items.get('school', false) == true ? cfgNum('schoolPts', 5) : 0);
+      }
+      function activityOk() {
+        return request.resource.data.date is string && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && adjId == 'ac_' + request.resource.data.date + '_' + request.resource.data.memberId
+          && request.resource.data.items is map
+          && request.resource.data.items.keys().hasOnly(['mass', 'tunic', 'communion', 'school'])
+          && request.resource.data.items.get('mass', false) is bool && request.resource.data.items.get('tunic', false) is bool
+          && request.resource.data.items.get('communion', false) is bool && request.resource.data.items.get('school', false) is bool
+          && (request.resource.data.section == 'boys' || !('tunic' in request.resource.data.items.keys()))
+          && request.resource.data.pts is number && request.resource.data.pts == actPts();
+      }
+      // أي نقاط يدوية (بدون type) لازم يكون لها سبب مكتوب
+      function typedOrReasoned() {
+        return request.resource.data.get('type', '') in ['welcome', 'contest', 'activity']
+          || (request.resource.data.get('reason', '') is string && request.resource.data.get('reason', '').size() > 0);
+      }
       allow read: if signedIn() && (resource == null || isAdmin()
         || (isServant() && inScope(resource.data))
         || (isMember() && resource.data.memberId == u().memberId));
       allow create: if writeSecDoc(request.resource.data) && request.resource.data.section in ['boys', 'girls']
+        && typedOrReasoned()
+        && (request.resource.data.get('type', '') != 'activity' || activityOk())
         && (request.resource.data.get('type', '') != 'contest' || contestPtsOk())
         && memberDoc(request.resource.data.memberId).data.section == request.resource.data.section
         && (!adjId.matches('welcome_.*') || request.resource.data.get('type', '') == 'welcome')
         && (request.resource.data.get('type', '') != 'welcome' || welcomeAdjOk());
-      allow update: if staffOf(resource.data) && resource.data.get('type', '') != 'welcome' && !adjId.matches('welcome_.*') && sameSec()
+      allow update: if staffOf(resource.data) && resource.data.get('type', '') != 'welcome' && !adjId.matches('welcome_.*') && sameSec() && typedOrReasoned()
+        && (request.resource.data.get('type', '') != 'activity' || activityOk())
         && (request.resource.data.get('type', '') != 'contest' || contestPtsOk());
       allow delete: if staffOf(resource.data) && resource.data.get('type', '') != 'welcome' && !adjId.matches('welcome_.*');
     }

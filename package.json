@@ -1,6 +1,6 @@
 {
  "name": "osret-thanawy-service",
- "version": "5.1.0",
+ "version": "5.2.0",
  "private": true,
  "scripts": {
   "build": "esbuild src/main.js --bundle --minify --outfile=www/app.js",
