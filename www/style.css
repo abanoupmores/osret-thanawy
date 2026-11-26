@@ -424,3 +424,8 @@ input:focus,select:focus,textarea:focus{outline:0;border-color:var(--navy2);box-
 .home-intro *{text-shadow:none!important}
 .hero{background:linear-gradient(135deg,var(--navy2),var(--navy))!important;border:1px solid var(--gold2)!important;color:#fff!important}
 .hero .s{color:#e6f1fc!important}.hero h3{color:#fff3c4!important}
+.achk{display:inline-flex;align-items:center;gap:5px;border:1.5px solid var(--line);border-radius:20px;padding:5px 10px;font-size:12.5px;background:#fff;color:var(--ink)}
+.achk input{width:16px;height:16px;margin:0;accent-color:var(--navy)}
+.achk.on{background:#e6f1fc;border-color:var(--navy2);font-weight:700}
+/* اختيار المستخدم يغلب الخلفية التلقائية للصفحة */
+html body.custom-bg #bg{background-image:var(--user-bg)!important;background-size:cover!important;background-position:center top!important}
